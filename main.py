@@ -2,7 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.metrics import *
-from sklearn.naive_bayes import GaussianNB
+from sklearn.naive_bayes import BernoulliNB
 from preprocessing import preprocess
 from sklearn.model_selection import train_test_split
 from sklearn import tree
@@ -12,54 +12,67 @@ from six import StringIO
 from IPython.display import Image
 import pydotplus
 
+plt.close('all')
+
 # preprocess('data/train.csv')
 data = pd.read_csv('data/preprocessedData.csv')
 x = data.drop('Type', axis=1)
 y = data['Type']
 x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2)
-"""
-for n in x.columns:
-    plt.title(n)
-    plt.scatter(x[n],y,color = 'red', marker = '+')
+
+
+def test(model, title):
+    model.fit(x_train, y_train)
+    y_pred = model.predict(x_test)
+    y_pred_prob = model.predict_proba(x_test)
+    print("Sensitivity (recall) score: ", recall_score(y_test, y_pred))
+    print("precision score: ", precision_score(y_test, y_pred))
+    print("f1 score: ", f1_score(y_test, y_pred))
+    print("accuracy score: ", accuracy_score(y_test, y_pred))
+    print("ROC AUC: {}".format(roc_auc_score(y_test, y_pred_prob[:, 1])))
+
+    RocCurveDisplay.from_estimator(model, x_test, y_test)
+    plt.title(title)
+    plt.show()
+    DetCurveDisplay.from_estimator(model, x_test, y_test)
+    plt.title(title)
+    plt.show()
+    ConfusionMatrixDisplay.from_estimator(model, x_test, y_test)
+    plt.title(title)
+    plt.show()
+    PrecisionRecallDisplay.from_estimator(model, x_test, y_test)
+    plt.title(title)
     plt.show()
 
 
-qualityTree = tree.DecisionTreeClassifier()
-qualityTree.fit(x_train, y_train)
-plt.barh(x.columns, qualityTree.feature_importances_)
-plt.show()
-ACC_train_rf = qualityTree.score(x_train, y_train)
-ACC_test_rf = qualityTree.score(x_test, y_test)
-print(ACC_train_rf)
-print(ACC_test_rf)
+"""
+for n in x.columns:
+    if n == '0':
+        break
+    plt.title(n)
+    plt.scatter(x[n], y, color='red', marker='+')
+    plt.show()
+"""
 
+qualityTree = tree.DecisionTreeClassifier()
+test(qualityTree, 'Decision Tree classifier')
+i = 0
+for w in x.columns:
+    if w == '0':
+        break
+    i += 1
+plt.barh(x.columns[:i], qualityTree.feature_importances_[:i])
+plt.title('Decision Tree classifier')
+plt.show()
 dot_data = StringIO()
 export_graphviz(qualityTree, out_file=dot_data,
                 filled=True, rounded=True,
                 special_characters=True, feature_names=x.columns, class_names=['0', '1'])
 graph = pydotplus.graph_from_dot_data(dot_data.getvalue())
-graph.write_png('diabetes.png')
+graph.write_png('Tree.png')
 Image(graph.create_png())
-"""
-"""
 model_nn = MLPClassifier()
-model_nn.fit(x_train,y_train)
-ACC_train_nn = model_nn.score(x_train,y_train)
-ACC_test_nn = model_nn.score(x_test,y_test)
-print(ACC_train_nn)
-print(ACC_test_nn)
-"""
-model_nb = GaussianNB()
-model_nb.fit(x_train,y_train)
-ACC_train_nb = model_nb.score(x_train,y_train)
-ACC_test_nb = model_nb.score(x_test,y_test)
-print(ACC_train_nb)
-print(ACC_test_nb)
-y_pred = model_nb.predict(x_test)
-y_pred_prob = model_nb.predict_proba(x_test)
-print('test-dataset confusion matrix:\n', confusion_matrix(y_test,y_pred))
-print("Sensitivity (recall) score: ", recall_score(y_test,y_pred))
-print("precision score: ", precision_score(y_test,y_pred))
-print("f1 score: ", f1_score(y_test,y_pred))
-print("accuracy score: ", accuracy_score(y_test,y_pred))
-print("ROC AUC: {}".format(roc_auc_score(y_test, y_pred_prob[:,1])))
+# test(model_nn, 'Multi-layer Perceptron classifier')
+
+model_nb = BernoulliNB()
+# test(model_nb, 'Bernoulli Naive bayes')

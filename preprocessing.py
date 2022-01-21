@@ -3,7 +3,11 @@ import re
 import string
 import nltk
 from nltk.corpus import stopwords
+from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.preprocessing import LabelEncoder
+from nltk.stem import PorterStemmer
+
+stemmer = PorterStemmer()
 
 
 def hashtags(message):
@@ -44,16 +48,18 @@ def clearText(message):
     words = [word for word in stripped if word.isalpha()]
     # filter out stop words
     stop_words = set(stopwords.words('english'))
-    words = [w for w in words if w not in stop_words]
+    words = [stemmer.stem(w) for w in words if w not in stop_words]
     return words
 
 
-def preprocess(url):
+def preprocess(url, output='data/preprocessedData.csv'):
     data = pd.read_csv(url)
     data["urlsCount"] = data["Tweet"].apply(urls).apply(len)
     data["Tweet"] = data["Tweet"].apply(removeUrls)
-    data["hashtagsCount"] = data["Tweet"].apply(hashtags).apply(len)
-    data["mentionsCount"] = data["Tweet"].apply(mentions).apply(len)
+    data["hashtags"] = data["Tweet"].apply(hashtags)
+    data["hashtagsCount"] = data["hashtags"].apply(len)
+    data["mentions"] = data["Tweet"].apply(mentions)
+    data["mentionsCount"] = data["mentions"].apply(len)
     data["Tweet"] = data["Tweet"].apply(removeMentions).apply(removeHashtags)
     data["sentencesCount"] = data["Tweet"].apply(nltk.sent_tokenize).apply(len)
     data["charsCount"] = data["Tweet"].apply(len)
@@ -62,10 +68,13 @@ def preprocess(url):
     data["hashtagsPercentage"] = data["hashtagsCount"] / (data["wordsCount"] + data["hashtagsCount"])
     data["urlsPercentage"] = data["urlsCount"] / (data["wordsCount"] + data["urlsCount"])
     data["mentionsPercentage"] = data["mentionsCount"] / (data["wordsCount"] + data["mentionsCount"])
-    data = data.drop('Tweet', axis=1)
-    data = data.drop('Id', axis=1)
+    vectorizer = CountVectorizer(tokenizer=clearText, token_pattern=None, max_features=int(1e2))
+    x = vectorizer.fit_transform(data["Tweet"])
+    x=pd.DataFrame.sparse.from_spmatrix(x)
+    data=pd.concat([data,x],axis=1)
+    data = data.drop(['Tweet','hashtags','mentions','Id'], axis=1)
     place = LabelEncoder()
     data["location"] = place.fit_transform(data["location"])
     data["Type"] = data["Type"].apply(lambda x: x == "Quality")
-    data=data.fillna(0)
-    data.to_csv('data/preprocessedData.csv', index=False)
+    data = data.fillna(0)
+    data.to_csv(output, index=False)
