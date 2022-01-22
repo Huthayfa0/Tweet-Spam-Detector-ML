@@ -39,14 +39,10 @@ def removeUrls(message):
 
 def clearText(message):
     tokens = nltk.word_tokenize(message)
-    # convert to lower case
     tokens = [w.lower() for w in tokens]
-    # remove punctuation from each word
     table = str.maketrans('', '', string.punctuation)
     stripped = [w.translate(table) for w in tokens]
-    # remove remaining tokens that are not alphabetic
     words = [word for word in stripped if word.isalpha()]
-    # filter out stop words
     stop_words = set(stopwords.words('english'))
     words = [stemmer.stem(w) for w in words if w not in stop_words]
     return words
@@ -63,7 +59,7 @@ def preprocess(url, output='data/preprocessedData.csv'):
     data["Tweet"] = data["Tweet"].apply(removeMentions).apply(removeHashtags)
     data["sentencesCount"] = data["Tweet"].apply(nltk.sent_tokenize).apply(len)
     data["charsCount"] = data["Tweet"].apply(len)
-    data["numbersToChars"] = data["Tweet"].apply(lambda x: len([c for c in x if x.isnumeric()]))
+    data["numbersToChars"] = data["Tweet"].apply(lambda x: sum([len(c) for c in x if x.isnumeric()]))/data["charsCount"]
     data["wordsCount"] = data["Tweet"].apply(clearText).apply(len)
     data["hashtagsPercentage"] = data["hashtagsCount"] / (data["wordsCount"] + data["hashtagsCount"])
     data["urlsPercentage"] = data["urlsCount"] / (data["wordsCount"] + data["urlsCount"])

@@ -1,6 +1,6 @@
 import pandas as pd
 import matplotlib.pyplot as plt
-import numpy as np
+from sklearn.feature_selection import SelectKBest, chi2
 from sklearn.metrics import *
 from sklearn.naive_bayes import BernoulliNB
 from preprocessing import preprocess
@@ -18,7 +18,9 @@ plt.close('all')
 data = pd.read_csv('data/preprocessedData.csv')
 x = data.drop('Type', axis=1)
 y = data['Type']
-x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2)
+h = SelectKBest(chi2, k=5)
+new_x = h.fit_transform(x, y)
+x_train, x_test, y_train, y_test = train_test_split(new_x, y, test_size=0.2)
 
 
 def test(model, title):
@@ -57,17 +59,13 @@ for n in x.columns:
 qualityTree = tree.DecisionTreeClassifier()
 test(qualityTree, 'Decision Tree classifier')
 i = 0
-for w in x.columns:
-    if w == '0':
-        break
-    i += 1
-plt.barh(x.columns[:i], qualityTree.feature_importances_[:i])
+plt.barh(h.get_feature_names_out(), qualityTree.feature_importances_)
 plt.title('Decision Tree classifier')
 plt.show()
 dot_data = StringIO()
 export_graphviz(qualityTree, out_file=dot_data,
                 filled=True, rounded=True,
-                special_characters=True, feature_names=x.columns, class_names=['0', '1'])
+                special_characters=True, feature_names=h.get_feature_names_out(), class_names=['0', '1'])
 graph = pydotplus.graph_from_dot_data(dot_data.getvalue())
 graph.write_png('Tree.png')
 Image(graph.create_png())
